@@ -1,0 +1,19 @@
+{
+  "name": "crypto-trading-experiment",
+  "version": "1.0.0",
+  "description": "One-week autonomous trading experiment on Base",
+  "scripts": {
+    "status": "node src/status.mjs",
+    "scan": "node src/scan.mjs",
+    "verify": "node src/verify.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "undici": "^8.7.0",
+    "viem": "^2.55.2"
+  },
+  "type": "module",
+  "private": true
+}
