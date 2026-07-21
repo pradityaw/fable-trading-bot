@@ -1,1 +1,12 @@
-[]
+[
+  {
+    "symbol": "MIGGLES",
+    "token": "0xB1a03EdA10342529bBF8EB700a06C60441fEf25d",
+    "decimals": 18,
+    "entryUsd": 60.63,
+    "entryPriceUsd": 0.002588,
+    "high": 60.63,
+    "openedAt": "2026-07-21 01:34Z",
+    "fee": 10000
+  }
+]
