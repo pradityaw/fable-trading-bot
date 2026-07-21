@@ -53,7 +53,7 @@ export const RISK = {
 // enter only when the last hour is quiet — a pullback/consolidation — never
 // mid-spike. Rank survivors by 6h trend, not 1h heat.
 export const ENTRY = {
-  minCh6hPct: 8.0,     // sustained 6h uptrend, not a one-candle wonder
+  minCh6hPct: 6.0,     // v2.1: 8%→6% — Base market ran flat for ~6 cycles (top 6h mover +4%); 6% still a real sustained trend (well above noise) but ~2x addressable setups. Anti-top-buying guards (maxCh1hPct, +24h, 6h-ranking) unchanged, so v1's spike-chasing flaw stays fixed.
   minCh24hPct: 0.0,    // daily trend not negative (no dead-cat bounces)
   minCh1hPct: -3.0,    // tolerate a shallow pullback...
   maxCh1hPct: 5.0,     // ...but NEVER chase a hot 1h candle (this was the v1 killer)
