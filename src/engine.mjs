@@ -70,7 +70,7 @@ for (const p of positions) {
 
   let exit = null;
   if (pnlPct <= -RISK.stopLossPct) exit = `STOP_LOSS ${(pnlPct * 100).toFixed(1)}%`;
-  else if (pnlPct >= 0.25 && drawFromHigh >= RISK.takeProfitTrailPct) exit = `TRAIL_TP peak$${p.high.toFixed(2)} now$${valueUsd.toFixed(2)}`;
+  else if (pnlPct >= (RISK.tpActivatePct ?? 0.25) && drawFromHigh >= RISK.takeProfitTrailPct) exit = `TRAIL_TP peak$${p.high.toFixed(2)} now$${valueUsd.toFixed(2)}`;
 
   log(`position ${p.symbol}: $${valueUsd.toFixed(2)} (${(pnlPct * 100).toFixed(1)}% vs entry $${p.entryUsd})${exit ? " -> EXIT " + exit : ""}`);
 
@@ -136,19 +136,24 @@ let cands = [...pairsMap.values()]
   .filter((p) => !quoteWl.includes(p.baseToken?.address?.toLowerCase()))
   .filter((p) => !held.has(p.baseToken?.address?.toLowerCase()));
 for (const p of cands) {
-  const ch1h = p.priceChange?.h1 ?? 0, ch6h = p.priceChange?.h6 ?? 0, vol1h = p.volume?.h1 ?? 0, liq = p.liquidity?.usd ?? 1;
-  p._score = (ch1h * 0.6 + ch6h * 0.4) * Math.log10(1 + vol1h) * Math.min(1, vol1h / liq);
+  const ch1h = p.priceChange?.h1 ?? 0, ch6h = p.priceChange?.h6 ?? 0, ch24h = p.priceChange?.h24 ?? 0;
+  const vol6h = p.volume?.h6 ?? 0, liq = p.liquidity?.usd ?? 1;
+  // v2: rank by sustained trend (6h/24h), not 1h heat — 1h heat was the v1 top-buying bias.
+  p._score = (ch6h * 0.6 + ch24h * 0.3 + ch1h * 0.1) * Math.log10(1 + vol6h) * Math.min(1, vol6h / liq);
 }
-// entry gates: interpretable, sustained momentum with tradeable volume (config.ENTRY).
+// entry gates v2 (config.ENTRY): multi-hour uptrend + quiet last hour (pullback entry).
 cands = cands.filter((p) =>
-  (p.priceChange?.h1 ?? -999) >= ENTRY.minCh1hPct &&
   (p.priceChange?.h6 ?? -999) >= ENTRY.minCh6hPct &&
-  (p.volume?.h1 ?? 0) >= ENTRY.minVol1hUsd
+  (p.priceChange?.h24 ?? -999) >= ENTRY.minCh24hPct &&
+  (p.priceChange?.h1 ?? -999) >= ENTRY.minCh1hPct &&
+  (p.priceChange?.h1 ?? 999) <= ENTRY.maxCh1hPct &&
+  (p.volume?.h1 ?? 0) >= ENTRY.minVol1hUsd &&
+  (p.volume?.h6 ?? 0) >= ENTRY.minVol6hUsd
 );
-cands.sort((a, b) => b._score - a._score); // rank survivors by composite momentum
+cands.sort((a, b) => b._score - a._score); // rank survivors by sustained-trend score
 
 if (!cands.length) {
-  log(`no qualifying entry (need 1h>=${ENTRY.minCh1hPct}%, 6h>=${ENTRY.minCh6hPct}%, vol1h>=$${ENTRY.minVol1hUsd}). Holding.`);
+  log(`no qualifying entry (need 6h>=${ENTRY.minCh6hPct}%, 24h>=${ENTRY.minCh24hPct}%, 1h in [${ENTRY.minCh1hPct}%,${ENTRY.maxCh1hPct}%], vol1h>=$${ENTRY.minVol1hUsd}, vol6h>=$${ENTRY.minVol6hUsd}). Holding.`);
   process.exit(0);
 }
 
@@ -167,7 +172,7 @@ if (s.transfer_pausable === "1") flags.push("PAUSABLE");
 if (s.is_blacklisted === "1") flags.push("BLACKLIST");
 if (flags.length) { log(`top pick ${top.baseToken.symbol} REJECTED by security screen: ${flags.join(",")}. Holding.`); process.exit(0); }
 
-log(`ENTRY candidate: ${top.baseToken.symbol} score=${top._score.toFixed(1)} 1h=${top.priceChange?.h1}% vol1h=$${Math.round(top.volume?.h1)} liq=$${Math.round(top.liquidity?.usd)}`);
+log(`ENTRY candidate: ${top.baseToken.symbol} score=${top._score.toFixed(1)} 6h=${top.priceChange?.h6}% 24h=${top.priceChange?.h24}% 1h=${top.priceChange?.h1}% vol6h=$${Math.round(top.volume?.h6)} liq=$${Math.round(top.liquidity?.usd)}`);
 log(`sizing $${targetUsd.toFixed(2)} (${(targetUsd / equityUsd * 100).toFixed(0)}% of equity)`);
 
 if (!LIVE) { log(`would BUY ${top.baseToken.symbol} with $${targetUsd.toFixed(2)} of WETH. (dry run)`); process.exit(0); }

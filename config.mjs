@@ -35,23 +35,29 @@ export const APIS = {
 // ---- Risk rules (hard limits — the engine refuses trades that violate these) ----
 export const RISK = {
   maxPositions: 2,                // max concurrent token positions
-  maxPositionPctOfEquity: 0.45,   // never >45% of equity in one token
-  stopLossPct: 0.15,              // exit if a position drops 15% from entry
-  takeProfitTrailPct: 0.20,       // trail exits 20% below the high-water mark once >+25%
+  maxPositionPctOfEquity: 0.30,   // v2: 45%→30% — two stop-outs cost 25% of bankroll; size down to survive variance
+  stopLossPct: 0.12,              // v2: 15%→12% — hourly cadence gaps past the stop anyway; start tighter
+  takeProfitTrailPct: 0.10,       // v2: 20%→10% trail below high-water mark once activated
+  tpActivatePct: 0.10,            // v2: trail activates at +10% (was hardcoded +25% — winners never got that far)
   maxSlippagePct: 0.015,          // reject swaps quoted worse than 1.5% slippage
-  minPairLiquidityUsd: 150_000,   // never touch pairs with < $150k liquidity
+  minPairLiquidityUsd: 400_000,   // v2: 150k→400k — thin pools gap through stops (MIGGLES: $420k liq still gapped -25%/h)
   minPairAgeHours: 72,            // no freshly launched tokens (rug filter)
   gasReserveEth: 0.001,           // always keep this much ETH for exits
   requireGoPlusClean: true,       // token must pass honeypot/tax screening
 };
 
-// ---- Entry momentum gates (tunable; escalated over the week if no trades) ----
-// Interpretable replacement for the old opaque score>5 gate. A token must show a
-// real, sustained move with tradeable volume — not sub-1% noise. These are the
-// ONLY loosenable knobs; the RISK safety rails above stay fixed.
+// ---- Entry gates v2: trend-pullback, not spike-chasing ----
+// v1 ("1h >= +4%") bought blow-off tops: both live trades (DEGEN +12.9%/1h,
+// MIGGLES +6.4%/1h) entered right after the pump and mean-reverted into the stop.
+// v2 inverts it: require a REAL multi-hour uptrend (6h and 24h positive), and
+// enter only when the last hour is quiet — a pullback/consolidation — never
+// mid-spike. Rank survivors by 6h trend, not 1h heat.
 export const ENTRY = {
-  minCh1hPct: 4.0,   // >= +4% in the last hour (genuine move, not noise)
-  minCh6hPct: 0.0,   // 6h change >= 0 (trend intact, not a dead-cat 1h spike)
-  minVol1hUsd: 50_000, // >= $50k 1h volume so entry/exit doesn't move the pool
+  minCh6hPct: 8.0,     // sustained 6h uptrend, not a one-candle wonder
+  minCh24hPct: 0.0,    // daily trend not negative (no dead-cat bounces)
+  minCh1hPct: -3.0,    // tolerate a shallow pullback...
+  maxCh1hPct: 5.0,     // ...but NEVER chase a hot 1h candle (this was the v1 killer)
+  minVol1hUsd: 30_000, // still-live interest this hour
+  minVol6hUsd: 150_000, // real sustained volume behind the 6h move
 };
 
