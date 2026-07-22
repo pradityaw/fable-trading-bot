@@ -57,7 +57,7 @@ export const ENTRY = {
   minCh24hPct: 0.0,    // daily trend not negative (no dead-cat bounces)
   minCh1hPct: -3.0,    // tolerate a shallow pullback...
   maxCh1hPct: 5.0,     // ...but NEVER chase a hot 1h candle (this was the v1 killer)
-  minVol1hUsd: 30_000, // still-live interest this hour
-  minVol6hUsd: 150_000, // real sustained volume behind the 6h move
+  minVol1hUsd: 18_000, // v2.2: 30k→18k — Base in a low-volume regime; deep liquidity ($400k floor) is the real tradeability guard, volume floor was over-conservative. Still excludes ghost towns (KEYCAT trending +10%/24h but only $6.7k/1h stays out).
+  minVol6hUsd: 90_000,  // v2.2: 150k→90k — a $60 round-trip is ~0.5% of $90k/6h flow, negligible slippage; keeps a real-participation bar without chasing the thinnest names.
 };
 
